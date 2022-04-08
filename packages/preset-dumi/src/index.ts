@@ -44,6 +44,7 @@ export default () => {
 
       // compiletime
       require.resolve('./plugins/features/compiletime'),
+      require.resolve('./plugins/features/react18'),
     ],
   };
 };
