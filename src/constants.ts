@@ -22,12 +22,12 @@ export const CLIENT_DEPS = [
   '@ant-design/icons-svg',
   '@makotot/ghostui',
   'deepmerge',
-  'highlight-words-core',
   'lodash.throttle',
   'prism-react-renderer',
   'prismjs',
   'rc-tabs',
   'react-copy-to-clipboard',
-  'react-helmet',
   'react-intl',
 ];
+
+export const USELESS_TMP_FILES = ['tsconfig.json', 'typings.d.ts'];

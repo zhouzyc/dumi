@@ -5,7 +5,10 @@
   top: @s-header-height;
   width: @s-sidebar-width;
   max-height: calc(100vh - @s-header-height);
-  padding: 20px 32px 24px 8px;
+  padding-top: 20px;
+  padding-bottom: 24px;
+  padding-inline-start: 8px;
+  padding-inline-end: 32px;
   box-sizing: border-box;
   overflow: auto;
 
@@ -16,10 +19,10 @@
     left: 0;
     bottom: 0;
     max-height: initial;
-    padding-left: 32px;
+    padding-inline-start: 32px;
     background-color: @c-site-bg;
     border-top: 1px solid @c-border-light;
-    box-shadow: 0 0 20px rgb(0 0 0 / 10%);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 10%);
     transition: 0.2s all;
 
     .@{prefix}-doc-layout:not([data-mobile-sidebar-active]) & {
@@ -47,12 +50,13 @@
 
     > dd {
       margin: 0;
-      padding: 10px 0;
+      padding: 8px 0;
 
       > a {
         display: block;
         color: @c-text-secondary;
         font-size: 16px;
+        line-height: 20px;
         text-decoration: none;
         transition: all 0.3s;
         white-space: nowrap;

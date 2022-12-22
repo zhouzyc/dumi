@@ -2,7 +2,7 @@ import { isTabRouteFile } from '@/features/tabs';
 import type { IThemeLoadResult } from '@/features/theme/loader';
 import { getCache } from '@/utils';
 import fs from 'fs';
-import { lodash, Mustache } from 'umi/plugin-utils';
+import { lodash, Mustache, winPath } from 'umi/plugin-utils';
 import transform, {
   type IMdTransformerOptions,
   type IMdTransformerResult,
@@ -42,14 +42,16 @@ function getDemoSourceFiles(demos: IMdTransformerResult['meta']['demos'] = []) {
 }
 
 function emit(this: any, opts: IMdLoaderOptions, ret: IMdTransformerResult) {
+  const { demos, embeds } = ret.meta;
+
+  // declare embedded files as loader dependency, for re-compiling when file changed
+  embeds!.forEach((file) => this.addDependency(file));
+
+  // declare demo source files as loader dependency, for re-compiling when file changed
+  getDemoSourceFiles(demos).forEach((file) => this.addDependency(file));
+
   if (opts.mode === 'meta') {
-    const { demos, frontmatter, toc, texts, embeds = [] } = ret.meta;
-
-    // declare embedded files as loader dependency, for clear cache when file changed
-    embeds.forEach((file) => this.addDependency(file));
-
-    // declare demo source files as loader dependency, for clear cache when file changed
-    getDemoSourceFiles(demos).forEach((file) => this.addDependency(file));
+    const { frontmatter, toc, texts } = ret.meta;
 
     // apply demos resolve hook
     if (demos && opts.onResolveDemos) {
@@ -163,9 +165,11 @@ export default function mdLoader(this: any, content: string) {
     return;
   } else if (cacheKey in deferrer) {
     // deferrer cache
-    deferrer[cacheKey].then((res) => {
-      cb(null, emit.call(this, opts, res));
-    });
+    deferrer[cacheKey]
+      .then((res) => {
+        cb(null, emit.call(this, opts, res));
+      })
+      .catch(cb);
     return;
   }
 
@@ -175,13 +179,13 @@ export default function mdLoader(this: any, content: string) {
       IMdLoaderOptions,
       'mode' | 'builtins' | 'onResolveDemos'
     >),
-    fileAbsPath: this.resourcePath,
+    fileAbsPath: winPath(this.resourcePath),
   });
 
   deferrer[cacheKey]
     .then((ret) => {
       // update deps mapping
-      depsMapping[this.resourcePath] = (ret.meta.embeds || []).concat(
+      depsMapping[this.resourcePath] = ret.meta.embeds!.concat(
         getDemoSourceFiles(ret.meta.demos),
       );
 
@@ -194,6 +198,7 @@ export default function mdLoader(this: any, content: string) {
       // save cache with final cache key
       cache.setSync(finalCacheKey, ret);
       cb(null, emit.call(this, opts, ret));
+      delete deferrer[cacheKey];
     })
     .catch(cb);
 }

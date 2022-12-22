@@ -1,5 +1,7 @@
 ---
-group: 其他
+group:
+  title: 其他
+  order: 3
 ---
 
 # 从 dumi 1.x 升级
@@ -50,7 +52,7 @@ $ git checkout src docs # 恢复原有的源码及文档
 ```diff
 {
   "compilerOptions": {
-    "paths: {
+    "paths": {
 +     "@@/*": [".dumi/tmp/*"]
     }
   }
@@ -68,6 +70,15 @@ $ git checkout src docs # 恢复原有的源码及文档
 + .dumi/tmp-production
 ```
 
+#### 更新外部引入 demo
+
+单标签改为双标签。
+
+```diff
+- <code src="path/to/demo.tsx" />
++ <code src="path/to/demo.tsx"></code>
+```
+
 ## 项目文件升级
 
 dumi 2.0 将使用特有的 `.dumirc.ts` 作为配置文件，请将原有的 `.umirc.ts` 或者 `config/config.ts` 重命名为 `.dumirc.ts`，并做如下调整：
@@ -77,7 +88,7 @@ dumi 2.0 将使用特有的 `.dumirc.ts` 作为配置文件，请将原有的 `.
 
 
 - export default {
-+ export defualt defineConfig({
++ export default defineConfig({
    # 以下为文档配置升级
    # 已内置全文搜索，默认不再集成 algolia，有需要可以手动覆盖 SearchBar 组件
 -  algolia: { ... },
@@ -119,8 +130,11 @@ dumi 2.0 将使用特有的 `.dumirc.ts` 作为配置文件，请将原有的 `.
      # 废弃，由注册的技术栈决定解析什么语言的 demo
 -    previewLangs: [...],
    },
-   # 暂不支持，后续版本会支持
--  sitemap: {},
+   sitemap: {
+-    excludes: [...],
+     # sitemap.excludes 配置项升级
++    exclude: [...],
+   },
    # apiParser 的子配置项暂不支持，后续版本会支持
    apiParser: {
 -    ...

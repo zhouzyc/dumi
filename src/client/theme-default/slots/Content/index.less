@@ -8,6 +8,10 @@
     color: @c-primary;
   }
 
+  img {
+    max-width: 100%;
+  }
+
   // inline code
   *:not(pre) code {
     padding: 2px 5px;
@@ -66,13 +70,17 @@
     > a[aria-hidden]:first-child {
       float: left;
       width: 20px;
-      padding-right: 4px;
-      margin-left: -24px;
+      padding-inline-end: 4px;
+      margin-inline-start: -24px;
       color: @c-text;
       // hide phantom blank node
       font-size: 0;
       text-align: right;
       line-height: inherit;
+
+      [data-direction='rtl'] & {
+        float: right;
+      }
 
       &:hover {
         border: 0;
@@ -102,7 +110,7 @@
     background-color: #fff;
     border-top-left-radius: 10px;
     border-top-right-radius: 10px;
-    box-shadow: 0 8px 24px 0 rgb(0 0 0 / 5%);
+    box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 5%);
 
     @media @mobile {
       max-width: initial;

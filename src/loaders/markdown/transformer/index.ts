@@ -48,7 +48,7 @@ declare module 'vfile' {
     texts: IRouteMeta['texts'];
     frontmatter: IRouteMeta['frontmatter'];
     toc: IRouteMeta['toc'];
-    embeds?: string[];
+    embeds: string[];
   }
 }
 
@@ -131,7 +131,9 @@ export default async (raw: string, opts: IMdTransformerOptions) => {
   // apply internal rehype plugins
   processor
     .use(remarkRehype, { allowDangerousHtml: true })
-    .use(rehypeRaw)
+    .use(rehypeRaw, {
+      fileAbsPath: opts.fileAbsPath,
+    })
     .use(rehypeRemoveComments, { removeConditional: true })
     .use(rehypeStrip)
     .use(rehypeImg)

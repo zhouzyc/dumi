@@ -112,7 +112,11 @@ const useFlatSearchData = (data: ISearchResult) => {
   return flatData;
 };
 
-const SearchResult: FC<{ data: ISearchResult; loading: boolean }> = (props) => {
+const SearchResult: FC<{
+  data: ISearchResult;
+  loading: boolean;
+  onItemSelect?: (item: ISearchResult[0]['hints'][0]) => void;
+}> = (props) => {
   const [data, histsCount] = useFlatSearchData(props.data);
   const [activeIndex, setActiveIndex] = useState(-1);
 
@@ -129,6 +133,7 @@ const SearchResult: FC<{ data: ISearchResult; loading: boolean }> = (props) => {
         )!.value as ISearchResult[0]['hints'][0];
 
         history.push(item.link);
+        props.onItemSelect?.(item);
         (document.activeElement as HTMLInputElement).blur();
       }
 
@@ -146,6 +151,11 @@ const SearchResult: FC<{ data: ISearchResult; loading: boolean }> = (props) => {
     <div
       className="dumi-default-search-result"
       onMouseEnter={() => setActiveIndex(-1)}
+      // for ux, only hide result when mouse up
+      onMouseDownCapture={(ev) => ev.preventDefault()}
+      onMouseUpCapture={() => {
+        (document.activeElement as HTMLInputElement).blur();
+      }}
     >
       {Boolean(props.data.length || props.loading) ? (
         <dl>
@@ -157,6 +167,7 @@ const SearchResult: FC<{ data: ISearchResult; loading: boolean }> = (props) => {
                 <Link
                   to={item.value.link}
                   data-active={activeIndex === item.activeIndex || undefined}
+                  onClick={() => props.onItemSelect?.(item.value)}
                 >
                   {React.createElement(ICONS_MAPPING[item.value.type])}
                   <h4>

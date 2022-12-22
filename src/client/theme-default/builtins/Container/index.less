@@ -1,36 +1,52 @@
 @import (reference) '../../styles/variables.less';
 
-.@{prefix}-container {
-  margin: 24px 0 32px;
-  padding: 18px 16px 18px 44px;
+.@{prefix}-container.markdown {
+  padding: 18px 0;
+  padding-inline-start: 44px;
+  padding-inline-end: 16px;
   border-radius: 4px;
+
+  &:not(:first-child) {
+    margin-bottom: 24px;
+  }
+
+  &:not(:last-child) {
+    margin-top: 32px;
+  }
 
   > svg {
     float: left;
     fill: currentcolor;
-    margin-left: -26px;
+    margin-inline-start: -26px;
     width: 18px;
+
+    [data-direction='rtl'] & {
+      float: right;
+    }
   }
 
   > h4 {
-    margin: 1px 0 0;
+    clear: none;
+    margin: 0 0 12px;
     font-size: 15px;
-    line-height: 1;
+    line-height: 17px;
   }
 
-  > p {
-    margin: 8px 0 0;
+  > section {
     font-size: 15px;
-    line-height: 1.2;
   }
 
   &[data-type='info'] {
     @color: darken(desaturate(@c-primary, 45%), 10%);
 
-    color: @color;
     background: lighten(@c-primary, 42%);
 
-    > p {
+    > h4,
+    > svg {
+      color: @color;
+    }
+
+    > section {
       color: desaturate(@color, 20%);
     }
   }
@@ -38,10 +54,14 @@
   &[data-type='warning'] {
     @color: darken(desaturate(@c-warning, 20%), 2%);
 
-    color: @color;
     background: lighten(@c-warning, 51%);
 
-    > p {
+    > h4,
+    > svg {
+      color: @color;
+    }
+
+    > section {
       color: desaturate(@color, 24%);
     }
   }
@@ -49,10 +69,14 @@
   &[data-type='success'] {
     @color: darken(desaturate(@c-success, 5%), 1%);
 
-    color: @color;
     background: lighten(@c-success, 59%);
 
-    > p {
+    > h4,
+    > svg {
+      color: @color;
+    }
+
+    > section {
       color: desaturate(@color, 22%);
     }
   }
@@ -60,10 +84,14 @@
   &[data-type='error'] {
     @color: darken(desaturate(@c-error, 20%), 1%);
 
-    color: @color;
     background: lighten(@c-error, 51%);
 
-    > p {
+    > h4,
+    > svg {
+      color: @color;
+    }
+
+    > section {
       color: desaturate(@color, 25%);
     }
   }

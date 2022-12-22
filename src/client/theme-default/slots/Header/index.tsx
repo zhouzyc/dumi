@@ -1,9 +1,11 @@
+import HeaderExtra from '@/client/theme-default/slots/HeadeExtra';
 import { ReactComponent as IconClose } from '@ant-design/icons-svg/inline-svg/outlined/close.svg';
 import { ReactComponent as IconMenu } from '@ant-design/icons-svg/inline-svg/outlined/menu.svg';
 import { useRouteMeta } from 'dumi';
 import LangSwitch from 'dumi/theme/slots/LangSwitch';
 import Logo from 'dumi/theme/slots/Logo';
 import Navbar from 'dumi/theme/slots/Navbar';
+import RtlSwitch from 'dumi/theme/slots/RtlSwitch';
 import SearchBar from 'dumi/theme/slots/SearchBar';
 import React, { useState, type FC } from 'react';
 import './index.less';
@@ -28,6 +30,8 @@ const Header: FC = () => {
           <div className="dumi-default-header-right-aside">
             <SearchBar />
             <LangSwitch />
+            <RtlSwitch />
+            <HeaderExtra />
           </div>
         </section>
         <button

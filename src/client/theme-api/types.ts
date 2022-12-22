@@ -23,6 +23,10 @@ export interface IPreviewerProps {
    */
   debug?: boolean;
   /**
+   * url for render current demo in a single page
+   */
+  demoUrl: string;
+  /**
    * disable demo content padding
    */
   compact?: boolean;
@@ -66,6 +70,7 @@ export interface IRouteMeta {
     features?: {
       emoji?: string;
       title?: string;
+      link?: string;
       description?: string;
       [key: string]: any;
     }[];
@@ -83,6 +88,10 @@ export interface IRouteMeta {
     id: string;
     depth: number;
     title: string;
+    /**
+     * private field, will be removed in the future
+     */
+    _debug_demo?: boolean;
   }[];
   // route texts
   texts: {
@@ -145,7 +154,9 @@ export interface ISidebarGroup {
 export interface IThemeConfig {
   name?: string;
   logo?: string;
-  nav?: (INavItem & { children?: INavItem[] })[];
+  nav?:
+    | (INavItem & { children?: INavItem[] })[]
+    | Record<string, (INavItem & { children?: INavItem[] })[]>;
   sidebar?: Record<string, ISidebarGroup[]>;
   footer?: string;
   [key: string]: any;

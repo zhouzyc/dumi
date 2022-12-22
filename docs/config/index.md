@@ -38,8 +38,6 @@ export default defineConfig({
 
 单独将资产的解析逻辑拆分是为了解决 dumi 1 中普通文档与源码目录下的组件文档混淆不清、分组困难的问题。
 
-是否自动 alias 项目包名到 src 目录，如果是 father 4 项目，还会根据配置自动 alias 产物目录到源码目录，默认开启。
-
 #### codeBlockMode
 
 - 类型：`'active' | 'passive'`
@@ -71,10 +69,30 @@ export default () => '我会被编译，展示为组件';
 ```
 </code></pre>
 
+#### entryFile
+
+- 类型：`string`
+- 默认值：`undefined`
+
+指定项目的入口文件，比如 `./src/index.ts`，目前该配置会用于 API 解析，可参考[指南 - 自动 API 表格](../guide/auto-api-table.md)。
+
+### apiParser
+
+- 类型：`{ unpkgHost?: 'https://unpkg.com'; resolveFilter?: (args: { id: string; ids: string; type: 'COMPONENT' | 'FUNCTION' }) => boolean }`
+- 默认值：`undefined`
+
+启用 API 自动解析功能，开启后可使用 `API` 全局组件，参考[指南 - 自动 API 表格](../guide/auto-api-table.md)。
+
+其中 `unpkgHost` 配置项用于自定义 unpkg.com 的地址以加快访问速度，比如自己的私有镜像地址。解析过程中如果存在找不到的依赖，会兜底到 `unpkgHost` 的地址去找。
+
+`resolveFilter` 配置项用于跳过指定原子资产的解析以提升性能。部分组件属性或函数签名存在多层嵌套，甚至是循环引用时，会导致解析结果巨大，此时可以通过该配置项跳过解析。
+
 ### autoAlias
 
 - 类型：`boolean`
 - 默认值：`true`
+
+是否自动 alias 项目包名到 src 目录，如果是 father 4 项目，还会根据配置自动 alias 产物目录到源码目录，默认开启。
 
 ### locales
 
@@ -110,31 +128,6 @@ export default () => '我会被编译，展示为组件';
 2. 插件函数
 3. 传递数组时，第一项为插件名称/路径/函数，第二项为插件配置
 
-### themeConfig
-
-配置传递给主题的配置项，具体包含哪些配置取决于主题实现。默认主题目前支持如下配置项：
-
-```ts
-{
-  themeConfig: {
-    name: '站点名称（可选）',
-    logo: '站点 LOGO 地址',
-    nav: [{ title: '导航标题', link: '导航路由' }], // 可选，未配置时走约定式导航
-    sidebar: { // 可选，未配置时走约定式菜单
-      '/guide': [
-        {
-          title: '侧边菜单分组名称（可选）',
-          children: [
-            { title: '菜单项标题', link: '菜单项路由' }
-          ]
-        }
-      ]
-    },
-    footer: '页脚 HTML', // 有 `Powered by dumi` 的默认值，可自定义，配置为 false 时不展示
-  }
-}
-```
-
 ### analytics
 
 - 类型：`{ ga_v2?: string; baidu?: string; ga?: string }`
@@ -157,6 +150,32 @@ dumi 内置了站点统计的功能，目前支持 [Google Analytics](https://an
   }
 }
 ```
+
+### sitemap
+
+- 类型：`{ hostname: string, exclude?: string[] }`
+- 默认值：`undefined`
+
+启用 `sitemap.xml` 自动生成功能。`hostname` 配置项用来指定 URL 的域名前缀，`exclude` 配置项用来忽略某些不需要包含在 sitemap 中的路由。
+
+## 主题配置项
+
+通过 `themeConfig` 可配置传递给主题的配置项：
+
+```ts
+// .dumirc.ts
+import { defineConfig } from 'dumi';
+
+export default defineConfig({
+  themeConfig: {
+    // 主题配置项均放置在这一层
+  },
+});
+```
+
+具体可用的配置项取决于项目当前使用的主题包，dumi 的默认主题目前支持如下配置项：
+
+<embed src="../theme/default.md#RE-/<!-- site config[^]+ site config end -->/"></embed>
 
 ## 基础配置项
 

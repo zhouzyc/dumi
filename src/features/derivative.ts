@@ -1,10 +1,9 @@
-import { CLIENT_DEPS, LOCAL_DUMI_DIR, LOCAL_PAGES_DIR } from '@/constants';
+import { CLIENT_DEPS, LOCAL_PAGES_DIR, USELESS_TMP_FILES } from '@/constants';
 import type { IApi } from '@/types';
-import { parseModule } from '@umijs/bundler-utils';
 import assert from 'assert';
 import fs from 'fs';
 import path from 'path';
-import { deepmerge, glob, winPath } from 'umi/plugin-utils';
+import { deepmerge, fsExtra, logger, winPath } from 'umi/plugin-utils';
 
 /**
  * exclude pre-compiling modules in mfsu mode
@@ -28,52 +27,9 @@ export function safeExcludeInMFSU(api: IApi, excludes: RegExp[]) {
 }
 
 /**
- * get files by glob pattern
- */
-function getFilesByGlob(globExp: string, dir: string) {
-  return glob
-    .sync(globExp, { cwd: dir })
-    .map((file) => winPath(path.join(dir, file)));
-}
-
-/**
  * plugin for derive default behaviors from umi
  */
 export default (api: IApi) => {
-  const dumiAbsDir = path.join(api.cwd, LOCAL_DUMI_DIR);
-  const strategies = {
-    // make return value same with umi
-    // ref: https://github.com/umijs/umi/blob/9551b4d7832bc30088af75ecea60a0572d8ad767/packages/preset-umi/src/features/appData/appData.ts#L128
-    async appJS() {
-      const [appJS] = getFilesByGlob('app.{js,jsx,ts,tsx}', dumiAbsDir);
-
-      if (appJS) {
-        const [, exports] = await parseModule({
-          path: appJS,
-          content: fs.readFileSync(appJS, 'utf-8'),
-        });
-
-        return {
-          path: appJS,
-          exports,
-        };
-      }
-
-      return null;
-    },
-    globalCSS: getFilesByGlob.bind(
-      null,
-      'global.{css,less,scss,sass}',
-      dumiAbsDir,
-    ),
-    globalJS: getFilesByGlob.bind(null, 'global.{js,jsx,ts,tsx}', dumiAbsDir),
-    overridesCSS: getFilesByGlob.bind(
-      null,
-      'overrides.{css,less,scss,sass}',
-      dumiAbsDir,
-    ),
-  };
-
   api.describe({ key: 'dumi:derivative' });
 
   // pre-check config
@@ -85,23 +41,48 @@ export default (api: IApi) => {
       'MFSU eager mode is not supported yet!',
     );
     assert(
+      api.config.mfsu?.esbuild !== true,
+      'MFSU esbuild bundler is not supported yet!',
+    );
+    assert(
       !api.config.ssr || api.config.ssr.builder === 'webpack',
       'Only `webpack` builder is supported in SSR mode!',
     );
+    if (api.userConfig.history?.type === 'hash') {
+      logger.warn(
+        'Hash history is temporarily incompatible, it is recommended to use browser history for now.',
+      );
+    }
   });
 
   // skip mfsu for client api, to avoid circular resolve in mfsu mode
-  safeExcludeInMFSU(api, [new RegExp('dumi/dist/client')]);
+  safeExcludeInMFSU(api, [
+    new RegExp('dumi/dist/client'),
+    // for useSiteSearch api
+    new RegExp('compiled/_internal/searchWorker'),
+  ]);
 
   api.modifyDefaultConfig((memo) => {
     if (api.userConfig.mfsu !== false) {
-      if (fs.existsSync(path.join(api.cwd, 'node_modules', '.pnpm'))) {
+      if (
+        fs.existsSync(path.join(api.cwd, 'node_modules', '.pnpm')) ||
+        process.platform === 'win32'
+      ) {
+        // FIXME: mfsu compatibility for pnpm and windows
         // mfsu normal model will broken in pnpm mode, because dumi exclude client
         // files in mfsu mode and umi cannot resolve nested deps from dumi client
+        // and mfsu will broken on window platform with unknown reason
         memo.mfsu = false;
       } else {
         // only normal mode is supported, because src is not fixed in dumi project, eager mode may scan wrong dir
         memo.mfsu.strategy = 'normal';
+
+        // make react singleton, because MFSU only process import
+        // but the parsed code block demo will has require('react')
+        memo.mfsu.shared = {
+          react: { singleton: true },
+          'react-dom': { singleton: true },
+        };
 
         // alias all client dependencies, to make sure normal mfsu can resolve them, until umi fixed
         // ref: https://github.com/umijs/umi/blob/de59054b2afe6ba92d0b52b530d71612ac4055a8/packages/mfsu/src/dep/dep.ts#L91-L92
@@ -136,23 +117,32 @@ export default (api: IApi) => {
     return memo;
   });
 
-  // move all conventional files to .dumi dir
-  api.modifyAppData(async (memo) => {
-    for (const [key, strategy] of Object.entries(strategies)) {
-      memo[key] = await strategy();
+  api.modifyConfig((memo) => {
+    if (api.userConfig.alias?.['@']) {
+      // respect user @ alias
+      // because dumi force to use .dumi as absSrcPath for move all conventional
+      // files (such as app.ts) to .dumi, but Umi force to set absSrcPath as @
+      // ref: https://github.com/umijs/umi/blob/6e1bd3a8a8a9ec86c8ac6f11f68b9c3dc897e8ad/packages/preset-umi/src/features/configPlugins/configPlugins.ts#L105
+      memo.alias['@'] = api.userConfig.alias['@'];
+    } else {
+      // fallback to use src as @ first, like Umi
+      memo.alias['@'] = winPath(
+        [path.join(api.cwd, 'src'), api.cwd].find(fs.existsSync)!,
+      );
     }
 
     return memo;
   });
 
+  // remove tsconfig.json, because the paths in tsconfig.json cannot be resolved in dumi project
   api.register({
     key: 'onGenerateFiles',
-    // make sure before umi generate files
-    stage: -Infinity,
-    async fn() {
-      for (const [key, strategy] of Object.entries(strategies)) {
-        api.appData[key] = await strategy();
-      }
+    // make sure after umi generate files
+    stage: Infinity,
+    fn() {
+      USELESS_TMP_FILES.forEach((file) => {
+        fsExtra.rmSync(path.join(api.paths.absTmpPath, file), { force: true });
+      });
     },
   });
 

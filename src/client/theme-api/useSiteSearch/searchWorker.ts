@@ -1,28 +1,9 @@
-import { useAppData, useNavData, useSiteData } from 'dumi';
+import type { useAppData, useNavData, useSiteData } from 'dumi';
 import { findAll } from 'highlight-words-core';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { IRouteMeta } from './types';
-import { TAB_QUERY_KEY } from './useTabMeta';
-import { useLocaleDocRoutes } from './utils';
+import type { IHighlightText, ISearchNavResult, ISearchResult } from '.';
+import type { IRouteMeta } from '../types';
 
-interface IHighlightText {
-  highlighted?: boolean;
-  text: string;
-}
-
-interface ISearchNavResult {
-  title?: string;
-  priority: number;
-  hints: {
-    type: 'page' | 'title' | 'demo' | 'content';
-    link: string;
-    priority: number;
-    highlightTitleTexts: IHighlightText[];
-    highlightTexts: IHighlightText[];
-  }[];
-}
-
-type ISearchResult = ISearchNavResult[];
+const TAB_QUERY_KEY = 'tab';
 
 type ISearchMetadata = {
   navTitle?: string;
@@ -95,6 +76,10 @@ function createMetadataSection(
     : null;
 }
 
+function generateRouteTitle(fm: IRouteMeta['frontmatter']) {
+  return [fm.title, fm.subtitle].filter(Boolean).join(' ');
+}
+
 function generateSearchMetadata(
   routes: ReturnType<typeof useAppData>['routes'],
   demos: ReturnType<typeof useSiteData>['demos'],
@@ -127,7 +112,7 @@ function generateSearchMetadata(
       );
       const orphanSection = createMetadataSection(
         '',
-        routeMeta.frontmatter.title,
+        generateRouteTitle(routeMeta.frontmatter),
         routeAbsPath,
         routeMeta.texts,
       );
@@ -138,7 +123,7 @@ function generateSearchMetadata(
             acc.push(
               createMetadataSection(
                 toc.title,
-                `${routeMeta.frontmatter.title} - ${toc.title}`,
+                `${generateRouteTitle(routeMeta.frontmatter)} - ${toc.title}`,
                 `${routeAbsPath}#${toc.id}`,
                 routeMeta.texts,
                 i,
@@ -155,7 +140,9 @@ function generateSearchMetadata(
           // collect orphan section that not in toc
           const tabOrphanSection = createMetadataSection(
             '',
-            `${routeMeta.frontmatter.title} - ${meta.frontmatter.title}`,
+            `${generateRouteTitle(routeMeta.frontmatter)} - ${
+              meta.frontmatter.title
+            }`,
             `${routeAbsPath}?${TAB_QUERY_KEY}=${key}`,
             meta.texts,
           );
@@ -167,7 +154,9 @@ function generateSearchMetadata(
             ...meta.toc.map((toc, i) =>
               createMetadataSection(
                 toc.title,
-                `${routeMeta.frontmatter.title} - ${meta.frontmatter.title} - ${toc.title}`,
+                `${generateRouteTitle(routeMeta.frontmatter)} - ${
+                  meta.frontmatter.title
+                } - ${toc.title}`,
                 `${routeAbsPath}?${TAB_QUERY_KEY}=${key}#${toc.id}`,
                 meta.texts,
                 i,
@@ -183,7 +172,7 @@ function generateSearchMetadata(
       metadata.push({
         navTitle: routeNav?.title,
         navOrder: routeNav ? nav.indexOf(routeNav) : Infinity,
-        title: routeMeta.frontmatter.title,
+        title: generateRouteTitle(routeMeta.frontmatter),
         link: routeAbsPath,
         sections: [
           ...(orphanSection ? [orphanSection] : []),
@@ -194,7 +183,8 @@ function generateSearchMetadata(
           demosMapping[route.id]?.map((demo) => ({
             link: `${routeAbsPath}#${demo.asset.id}`,
             rawTitle: demo.asset.title || '',
-            title: demo.asset.title || routeMeta.frontmatter.title,
+            title:
+              demo.asset.title || generateRouteTitle(routeMeta.frontmatter),
             description: demo.asset.description || '',
             keywords: demo.asset.keywords || [],
           })) || [],
@@ -208,14 +198,15 @@ function generateSearchMetadata(
 function generateHighlightTexts(
   str = '',
   keywords: string[],
-): [IHighlightText[], Record<string, boolean>] {
+  priority = 1,
+): [IHighlightText[], Record<string, number>] {
   const chunks = findAll({
     textToHighlight: str,
     searchWords: keywords,
     autoEscape: true,
   });
   // save matched keywords
-  const matchedMapping: Record<string, boolean> = {};
+  const matchedMapping: Record<string, number> = {};
 
   return [
     chunks.map(({ start, end, highlight }, i) => {
@@ -237,7 +228,7 @@ function generateHighlightTexts(
       if (highlight) {
         highlightText.highlighted = true;
         matchedMapping[keywords.find((k) => highlightText.text.includes(k))!] =
-          true;
+          priority;
       }
 
       return highlightText;
@@ -264,7 +255,7 @@ function generateSearchResult(metadata: ISearchMetadata, keywordsStr: string) {
       for (let p of sec.paragraphs) {
         if (matchReg.test(p)) {
           const [highlightTitleTexts, titleMatchMapping] =
-            generateHighlightTexts(sec.title, keywords);
+            generateHighlightTexts(sec.title, keywords, 10);
           const [highlightTexts, matchMapping] = generateHighlightTexts(
             p,
             keywords,
@@ -273,8 +264,10 @@ function generateSearchResult(metadata: ISearchMetadata, keywordsStr: string) {
           hints.push({
             type: 'content',
             link: sec.link,
-            priority: Object.keys({ ...titleMatchMapping, ...matchMapping })
-              .length,
+            priority: Object.values({
+              ...matchMapping,
+              ...titleMatchMapping,
+            }).reduce((acc, p) => acc + p, 0),
             highlightTitleTexts,
             highlightTexts,
           });
@@ -289,12 +282,16 @@ function generateSearchResult(metadata: ISearchMetadata, keywordsStr: string) {
         const [highlightTitleTexts, titleMatchMapping] = generateHighlightTexts(
           sec.title,
           keywords,
+          10,
         );
 
         hints.push({
           type: 'title',
           link: sec.link,
-          priority: Object.keys(titleMatchMapping).length,
+          priority: Object.values(titleMatchMapping).reduce(
+            (acc, p) => acc + p,
+            0,
+          ),
           highlightTitleTexts,
           highlightTexts: generateHighlightTexts(
             sec.paragraphs[0] || '',
@@ -310,6 +307,7 @@ function generateSearchResult(metadata: ISearchMetadata, keywordsStr: string) {
         const [highlightTitleTexts, titleMatchMapping] = generateHighlightTexts(
           demo.title,
           keywords,
+          10,
         );
         const [highlightTexts, matchMapping] = generateHighlightTexts(
           demo.description,
@@ -319,8 +317,10 @@ function generateSearchResult(metadata: ISearchMetadata, keywordsStr: string) {
         hints.push({
           type: 'demo',
           link: demo.link,
-          priority: Object.keys({ ...titleMatchMapping, ...matchMapping })
-            .length,
+          priority: Object.values({
+            ...matchMapping,
+            ...titleMatchMapping,
+          }).reduce((acc, p) => acc + p, 0),
           highlightTitleTexts,
           highlightTexts,
         });
@@ -332,12 +332,16 @@ function generateSearchResult(metadata: ISearchMetadata, keywordsStr: string) {
       const [highlightTitleTexts, titleMatchMapping] = generateHighlightTexts(
         data.title,
         keywords,
+        100,
       );
 
       hints.push({
         type: 'page',
         link: data.link,
-        priority: Object.keys(titleMatchMapping).length,
+        priority: Object.values(titleMatchMapping).reduce(
+          (acc, p) => acc + p,
+          0,
+        ),
         highlightTitleTexts,
         highlightTexts: generateHighlightTexts(
           data.sections[0]?.paragraphs[0] || '',
@@ -352,7 +356,7 @@ function generateSearchResult(metadata: ISearchMetadata, keywordsStr: string) {
 
       resultMapping[key] ??= {
         title: data.navTitle,
-        priority: data.navOrder,
+        priority: data.navOrder * 1000,
         hints: [],
       };
       resultMapping[key].hints.push(...hints);
@@ -369,37 +373,21 @@ function generateSearchResult(metadata: ISearchMetadata, keywordsStr: string) {
   );
 }
 
-export const useSiteSearch = () => {
-  const debounceTimer = useRef<number>();
-  const routes = useLocaleDocRoutes();
-  const { demos } = useSiteData();
-  const [loading, setLoading] = useState(false);
-  const [keywords, setKeywords] = useState('');
-  const navData = useNavData();
-  const [metadata, setMetadata] = useState<ISearchMetadata>([]);
-  const [result, setResult] = useState<ISearchResult>([]);
-  const setter = useCallback((val: string) => {
-    setLoading(true);
-    setKeywords(val);
-  }, []);
+let metadata: ISearchMetadata;
 
-  useEffect(() => {
-    setMetadata(generateSearchMetadata(routes, demos, navData));
-  }, [routes, demos, navData]);
+self.onmessage = ({ data }) => {
+  switch (data.action) {
+    case 'generate-metadata':
+      metadata = generateSearchMetadata(
+        data.args.routes,
+        data.args.demos,
+        data.args.nav,
+      );
+      break;
 
-  useEffect(() => {
-    const str = keywords.trim();
-
-    if (str) {
-      clearTimeout(debounceTimer.current);
-      debounceTimer.current = window.setTimeout(() => {
-        setResult(generateSearchResult(metadata, str));
-        setLoading(false);
-      }, 100);
-    } else {
-      setResult([]);
-    }
-  }, [keywords, metadata]);
-
-  return { keywords, setKeywords: setter, result, loading };
+    case 'get-search-result':
+      self.postMessage(generateSearchResult(metadata, data.args.keywords));
+      break;
+    default:
+  }
 };

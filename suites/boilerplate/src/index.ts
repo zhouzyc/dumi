@@ -41,7 +41,7 @@ export default async ({
           { title: 'yarn', value: 'yarn' },
           { title: 'pnpm', value: 'pnpm' },
         ],
-        initial: 4,
+        initial: 0,
       },
     ],
     {
@@ -93,6 +93,10 @@ export default async ({
       name: 'name',
       type: 'text',
       message: 'Input NPM package name',
+      validate: (value: string) => {
+        if (value && value.trim()) return true;
+        return 'NPM package name is required';
+      },
     });
   }
 
@@ -100,7 +104,7 @@ export default async ({
     path: join(__dirname, `../templates/${type}`),
     target,
     data: {
-      version: '^2.0.0-rc.0',
+      version: '^2.0.2',
       npmClient,
       registry,
     },
